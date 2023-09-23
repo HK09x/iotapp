@@ -1,14 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:iotapp/main.dart';
 
 class SignUpPage extends StatefulWidget {
   final VoidCallback callToSignIn;
-  const SignUpPage(
-      {Key? key,
-      required this.callToSignIn,
-      required Null Function() callToSingIn})
-      : super(key: key);
+  const SignUpPage({
+    Key? key,
+    required this.callToSignIn,
+  }) : super(key: key);
 
   @override
   _SignUpPageState createState() => _SignUpPageState();
@@ -18,17 +18,35 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _password2Controller = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _phoneNumberController = TextEditingController();
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _password2Controller.dispose();
-    super.dispose();
-  }
+  bool _isPhoneNumberValid = true;
+  bool _isPasswordMatch = true;
+  String? _emailErrorText;
+  bool _isSignUpSuccess = false;
 
   Future<void> _handleSignUp() async {
-    if (_passwordController.text == _password2Controller.text) {
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _password2Controller.text.isEmpty ||
+        _fullNameController.text.isEmpty ||
+        _phoneNumberController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('กรุณากรอกข้อมูลให้ครบทุกช่อง'),
+        ),
+      );
+    } else if (_phoneNumberController.text.length != 10) {
+      setState(() {
+        _isPhoneNumberValid = false;
+      });
+    } else if (_passwordController.text == _password2Controller.text) {
+      setState(() {
+        _isPasswordMatch = true;
+        _emailErrorText = null;
+      });
+
       try {
         final UserCredential userCredential =
             await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -38,22 +56,32 @@ class _SignUpPageState extends State<SignUpPage> {
 
         final User user = userCredential.user!;
         final String uid = user.uid;
+        final String fullName = _fullNameController.text;
+        final String phoneNumber = _phoneNumberController.text;
+        final String email = _emailController.text;
 
-        // สร้างเอกสารบน Cloud Firestore ในคอลเลคชัน "users" ด้วย UID ของผู้ใช้ใน Field "IDusers"
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'IDusers': uid,
-          // สามารถเพิ่มข้อมูลเพิ่มเติมของผู้ใช้ตามความต้องการได้
+          'ID_users': uid,
+          'Full_Name': fullName,
+          'Phone_Number': phoneNumber,
+          'Email': email,
         });
 
-        // สมัครสมาชิกสำเร็จ คุณสามารถดำเนินการต่อได้ตามต้องการ
         widget.callToSignIn();
-      } catch (error) {
-        // จัดการข้อผิดพลาดที่เกิดขึ้นในกรณีที่สมัครสมาชิกไม่สำเร็จ
-        print('เกิดข้อผิดพลาดในการสมัครสมาชิก: $error');
+        _isSignUpSuccess = true;
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'email-already-in-use') {
+          setState(() {
+            _emailErrorText = 'อีเมลนี้ถูกใช้งานแล้ว';
+          });
+        } else {
+          print('เกิดข้อผิดพลาดในการสมัครสมาชิก: ${error.message}');
+        }
       }
     } else {
-      // Passwords do not match
-      print('รหัสผ่านไม่ตรงกัน');
+      setState(() {
+        _isPasswordMatch = false;
+      });
     }
   }
 
@@ -78,16 +106,41 @@ class _SignUpPageState extends State<SignUpPage> {
             const SizedBox(height: 10),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'อีเมล',
-                labelStyle: TextStyle(
+                labelStyle: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.bold,
                   color: Colors.grey,
                 ),
-                focusedBorder: UnderlineInputBorder(
+                focusedBorder: const UnderlineInputBorder(
                   borderSide: BorderSide(color: Colors.green),
                 ),
+                errorText: _emailErrorText,
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _fullNameController,
+              decoration: const InputDecoration(labelText: 'ชื่อ'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _phoneNumberController,
+              onChanged: (value) {
+                setState(() {
+                  if (value.length == 10) {
+                    _isPhoneNumberValid = true;
+                  } else {
+                    _isPhoneNumberValid = false;
+                  }
+                });
+              },
+              decoration: InputDecoration(
+                labelText: 'เบอร์โทร',
+                errorText: _isPhoneNumberValid
+                    ? null
+                    : 'กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก',
               ),
             ),
             const SizedBox(height: 10),
@@ -99,20 +152,27 @@ class _SignUpPageState extends State<SignUpPage> {
             const SizedBox(height: 10),
             TextField(
               controller: _password2Controller,
-              decoration: const InputDecoration(labelText: 'ยืนยันรหัสผ่าน'),
+              decoration: InputDecoration(
+                labelText: 'ยืนยันรหัสผ่าน',
+                errorText: _isPasswordMatch ? null : 'รหัสผ่านไม่ตรงกัน',
+              ),
               obscureText: true,
             ),
             const SizedBox(height: 10),
             ElevatedButton(
-              onPressed: _handleSignUp,
-              child: const Text(
-                'ลงทะเบียน',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Montserrat',
-                ),
-              ),
+              onPressed: () async {
+                await _handleSignUp();
+                if (_isSignUpSuccess) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          LoginPage(), // หรือชื่อหน้าเข้าสู่ระบบ
+                    ),
+                  );
+                }
+              },
+              child: const Text('ลงทะเบียน'),
             ),
             const SizedBox(height: 10),
             Row(
@@ -120,8 +180,13 @@ class _SignUpPageState extends State<SignUpPage> {
               children: <Widget>[
                 InkWell(
                   onTap: () {
-                    // กลับไปหน้าล็อกอิน
-                    Navigator.of(context).pop();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            LoginPage(), // สร้างหน้าใหม่ของ Login
+                      ),
+                    );
                   },
                   child: const Text(
                     'กลับ',

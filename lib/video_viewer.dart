@@ -7,6 +7,7 @@ class VideoViewer extends StatefulWidget {
   const VideoViewer({Key? key, required this.videoUrl}) : super(key: key);
 
   @override
+  // ignore: library_private_types_in_public_api
   _VideoViewerState createState() => _VideoViewerState();
 }
 
@@ -15,7 +16,7 @@ class _VideoViewerState extends State<VideoViewer> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('MJPEG Video Viewer'),
+        title: const Text('MJPEG Video Viewer'),
       ),
       body: InAppWebView(
         initialUrlRequest: URLRequest(url: Uri.parse(widget.videoUrl)),

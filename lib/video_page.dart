@@ -7,6 +7,7 @@ class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({Key? key, required this.videoUrl}) : super(key: key);
 
   @override
+  // ignore: library_private_types_in_public_api
   _VideoPlayerScreenState createState() => _VideoPlayerScreenState();
 }
 
@@ -16,6 +17,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // ignore: deprecated_member_use
     _controller = VideoPlayerController.network(widget.videoUrl);
   }
 

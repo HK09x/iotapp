@@ -5,6 +5,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:iotapp/add_note_page.dart';
 
 import 'package:iotapp/main.dart';
+import 'package:iotapp/note_page.dart';
+import 'package:iotapp/video_page.dart';
 import 'package:iotapp/video_viewer.dart';
 
 class HomePage extends StatelessWidget {
@@ -29,6 +31,7 @@ class HomePage extends StatelessWidget {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
+              // ignore: use_build_context_synchronously
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -52,20 +55,22 @@ class HomePage extends StatelessWidget {
                 ip = data['ip'] ?? "";
 
                 // เช็คว่า URL มี HTTPS หรือไม่
-                bool isHttps = ip.toLowerCase().startsWith("https://");
+                bool isHttps = ip.toLowerCase().startsWith("http://");
                 if (!isHttps) {
                   // ถ้า URL ไม่มี HTTPS ให้แก้ไข URL เป็น HTTPS
-                  ip = "https://" + ip;
+                  ip = "http://$ip";
                 }
 
                 // เปิดหน้า VideoViewer ด้วย URL ที่ถูกแก้ไขแล้ว
+                // ignore: use_build_context_synchronously
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => VideoViewer(videoUrl: ip),
+                    builder: (context) => VideoPlayerScreen(videoUrl: ip),
                   ),
                 );
               } else {
+                // ignore: use_build_context_synchronously
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('ไม่พบข้อมูล URL ใน Cloud Firestore'),
@@ -86,101 +91,116 @@ class HomePage extends StatelessWidget {
                 ),
               );
             },
-            child: Text('บันทึกข้อมูล'),
-          )
+            child: const Text('บันทึกข้อมูล'),
+          ),
+         
         ],
       ),
       body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20), // เพิ่มระยะห่างด้านบน
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      const SizedBox(height: 20), // เพิ่มระยะห่างด้านบน
 
-            StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('sensor_data')
-                  .doc(userUID)
-                  .collection('house')
-                  .doc('plot')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const Text('ไม่สามารถเชื่อมต่อข้อมูลได้');
-                }
+      StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('sensor_data')
+            .doc(userUID)
+            .collection('house')
+            .doc('plot')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Text('ไม่สามารถเชื่อมต่อข้อมูลได้');
+          }
 
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const CircularProgressIndicator();
+          }
 
-                if (snapshot.hasData && snapshot.data!.exists) {
-                  final data = snapshot.data!.data() as Map<String, dynamic>;
-                  humidity = (data['humidity'] as num?)?.toDouble() ?? 0.0;
-                  soilMoisture =
-                      (data['soilMoisture'] as num?)?.toDouble() ?? 0.0;
-                  temperature =
-                      (data['temperature'] as num?)?.toDouble() ?? 0.0;
-                  pumpState = (data['pump_state'] as num?)?.toInt() ?? 0;
-                  lampState = (data['lamp_state'] as num?)?.toInt() ?? 0;
-                }
+          if (snapshot.hasData && snapshot.data!.exists) {
+            final data = snapshot.data!.data() as Map<String, dynamic>;
+            humidity = (data['humidity'] as num?)?.toDouble() ?? 0.0;
+            soilMoisture =
+                (data['soilMoisture'] as num?)?.toDouble() ?? 0.0;
+            temperature =
+                (data['temperature'] as num?)?.toDouble() ?? 0.0;
+            pumpState = (data['pump_state'] as num?)?.toInt() ?? 0;
+            lampState = (data['lamp_state'] as num?)?.toInt() ?? 0;
+          }
 
-                return Container(
-                  margin: const EdgeInsets.all(8.0),
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: const Color.fromARGB(255, 214, 214, 214),
-                      width: 2.0,
-                    ),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Expanded(
-                            child: buildDataItem(
-                              'ความชื้นในอากาศ',
-                              '$humidity%',
-                              Icons.cloud,
-                            ),
-                          ),
-                          Expanded(
-                            child: buildDataItem(
-                              'ความชื้นในดิน',
-                              '$soilMoisture%',
-                              Icons.grass,
-                            ),
-                          ),
-                          Expanded(
-                            child: buildDataItem(
-                              'อุณหภูมิ',
-                              '$temperature°C',
-                              Icons.thermostat,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Expanded(
-                            child: buildPumpToggleButton(pumpState),
-                          ),
-                          Expanded(
-                            child: buildLampToggleButton(lampState),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
+          return Container(
+            margin: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: const Color.fromARGB(255, 214, 214, 214),
+                width: 2.0,
+              ),
+              borderRadius: BorderRadius.circular(8.0),
             ),
-          ],
-        ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: buildDataItem(
+                        'ความชื้นในอากาศ',
+                        '$humidity%',
+                        Icons.cloud,
+                      ),
+                    ),
+                    Expanded(
+                      child: buildDataItem(
+                        'ความชื้นในดิน',
+                        '$soilMoisture%',
+                        Icons.grass,
+                      ),
+                    ),
+                    Expanded(
+                      child: buildDataItem(
+                        'อุณหภูมิ',
+                        '$temperature°C',
+                        Icons.thermostat,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: buildPumpToggleButton(pumpState),
+                    ),
+                    Expanded(
+                      child: buildLampToggleButton(lampState),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
+
+      // เพิ่มปุ่ม "ดูบันทึก" ที่นี่
+      ElevatedButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ViewNotesPage(userUid: userUID),
+            ),
+          );
+        },
+        child: const Text('ดูบันทึก'),
+      ),
+    ],
+  ),
+),
+
     );
   }
 

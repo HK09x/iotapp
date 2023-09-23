@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-// ignore: depend_on_referenced_packages
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:iotapp/home_page.dart';
@@ -12,7 +11,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +26,9 @@ class MyApp extends StatelessWidget {
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
-  // ignore: library_private_types_in_public_api
   _LoginPageState createState() => _LoginPageState();
 }
 
@@ -115,26 +113,30 @@ class _LoginPageState extends State<LoginPage> {
                               email: email,
                               password: password,
                             );
-                            // Navigate to the home page if login is successful
-                            // ignore: use_build_context_synchronously
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) =>
-                                      HomePage(userCredential.user!)),
+                                builder: (context) =>
+                                    HomePage(userCredential.user!),
+                              ),
                             );
                           } on FirebaseAuthException catch (e) {
-                            if (e.code == '') {
+                            if (e.code == 'user-not-found') {
                               setState(() {
-                                _errorMessage =
-                                    'User not found for that email.';
+                                _errorMessage = 'ไม่พบผู้ใช้งานด้วยอีเมลนี้';
                               });
                             } else if (e.code == 'wrong-password') {
                               setState(() {
-                                _errorMessage =
-                                    'Wrong password provided for that user.';
+                                _errorMessage = 'รหัสผ่านไม่ถูกต้อง';
                               });
                             }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(_errorMessage),
+                                duration: Duration(
+                                    seconds: 3), // แสดงเป็นเวลา 3 วินาที
+                              ),
+                            );
                           }
                         },
                         child: const Center(
@@ -155,7 +157,6 @@ class _LoginPageState extends State<LoginPage> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => SignUpPage(
-                                callToSingIn: () {},
                                 callToSignIn: () {},
                               ),
                             ),
