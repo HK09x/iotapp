@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:iotapp/edit_note_page.dart';
 
 class ViewNotesPage extends StatefulWidget {
   final String userUid;
@@ -59,49 +60,66 @@ class _ViewNotesPageState extends State<ViewNotesPage> {
                   "${formattedDate.day}/${formattedDate.month}/${formattedDate.year}";
 
               return Container(
-  padding: EdgeInsets.all(8.0),
-  child: Card(
-    color: Color.fromARGB(255, 126, 120, 120),
-    child: Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          img.isNotEmpty
-              ? Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(img),
-                      fit: BoxFit.cover,
+                padding: EdgeInsets.all(8.0),
+                child: Card(
+                  color: Color.fromARGB(255, 126, 120, 120),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        img.isNotEmpty
+                            ? Container(
+                                width: 150,
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: NetworkImage(img),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                            : SizedBox(),
+                        SizedBox(width: 60.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('วันที่: $formattedDateString'),
+                              Text('โรคที่พบ: $disease'),
+                              Text('โรงเรือนที่: $house'),
+                              Text('แปลงผักที่: $plot'),
+                              Text('อุณหภูมิ : $temperature (°C)'),
+                              Text('ความชื้น : $humidity (%)'),
+                              Text('ความชื้นในดิน : $soilMoisture (%)'),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditNotePage(
+                                  userUid: widget
+                                      .userUid, // ส่ง userUid ไปให้ EditNotePage
+                                  noteId:
+                                      note.id, // ส่ง noteId ไปให้ EditNotePage
+                                ),
+                              ),
+                            );
+                          },
+                          icon: Icon(
+                            Icons.edit,
+                            size: 24.0,
+                          ),
+                          tooltip: 'แก้ไขบันทึก',
+                        )
+                      ],
                     ),
                   ),
-                )
-              : SizedBox(),
-          SizedBox(width: 60.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('วันที่: $formattedDateString'),
-                Text('โรคที่พบ: $disease'),
-                Text('โรงเรือนที่: $house'),
-                Text('แปลงผักที่: $plot'),
-                Text('อุณหภูมิ : $temperature (°C)'),
-                Text('ความชื้น : $humidity (%)'),
-                Text('ความชื้นในดิน : $soilMoisture (%)'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  ),
-);
-
-
-
+                ),
+              );
             },
           );
         },

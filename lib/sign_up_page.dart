@@ -20,7 +20,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _password2Controller = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
-
+final TextEditingController _imgController = TextEditingController();
   bool _isPhoneNumberValid = true;
   bool _isPasswordMatch = true;
   String? _emailErrorText;
@@ -59,12 +59,14 @@ class _SignUpPageState extends State<SignUpPage> {
         final String fullName = _fullNameController.text;
         final String phoneNumber = _phoneNumberController.text;
         final String email = _emailController.text;
+        final String img = _imgController.text;
 
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'ID_users': uid,
           'Full_Name': fullName,
           'Phone_Number': phoneNumber,
           'Email': email,
+          'img': img,
         });
 
         widget.callToSignIn();

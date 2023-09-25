@@ -6,8 +6,8 @@ import 'package:iotapp/add_note_page.dart';
 
 import 'package:iotapp/main.dart';
 import 'package:iotapp/note_page.dart';
+import 'package:iotapp/profile_page.dart';
 import 'package:iotapp/video_page.dart';
-import 'package:iotapp/video_viewer.dart';
 
 class HomePage extends StatelessWidget {
   final User user;
@@ -93,114 +93,126 @@ class HomePage extends StatelessWidget {
             },
             child: const Text('บันทึกข้อมูล'),
           ),
-         
+          ElevatedButton(
+            onPressed: () {
+              // ไปยังหน้าโปรไฟล์ (ProfilePage)
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilePage(
+                    user: user, // ส่ง User ไปยัง ProfilePage
+                  ),
+                ),
+              );
+            },
+            child: Text('ไปยังโปรไฟล์'),
+          )
         ],
       ),
       body: SingleChildScrollView(
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      const SizedBox(height: 20), // เพิ่มระยะห่างด้านบน
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20), // เพิ่มระยะห่างด้านบน
 
-      StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('sensor_data')
-            .doc(userUID)
-            .collection('house')
-            .doc('plot')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Text('ไม่สามารถเชื่อมต่อข้อมูลได้');
-          }
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('sensor_data')
+                  .doc(userUID)
+                  .collection('house')
+                  .doc('plot')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text('ไม่สามารถเชื่อมต่อข้อมูลได้');
+                }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const CircularProgressIndicator();
-          }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
 
-          if (snapshot.hasData && snapshot.data!.exists) {
-            final data = snapshot.data!.data() as Map<String, dynamic>;
-            humidity = (data['humidity'] as num?)?.toDouble() ?? 0.0;
-            soilMoisture =
-                (data['soilMoisture'] as num?)?.toDouble() ?? 0.0;
-            temperature =
-                (data['temperature'] as num?)?.toDouble() ?? 0.0;
-            pumpState = (data['pump_state'] as num?)?.toInt() ?? 0;
-            lampState = (data['lamp_state'] as num?)?.toInt() ?? 0;
-          }
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  humidity = (data['humidity'] as num?)?.toDouble() ?? 0.0;
+                  soilMoisture =
+                      (data['soilMoisture'] as num?)?.toDouble() ?? 0.0;
+                  temperature =
+                      (data['temperature'] as num?)?.toDouble() ?? 0.0;
+                  pumpState = (data['pump_state'] as num?)?.toInt() ?? 0;
+                  lampState = (data['lamp_state'] as num?)?.toInt() ?? 0;
+                }
 
-          return Container(
-            margin: const EdgeInsets.all(8.0),
-            padding: const EdgeInsets.all(8.0),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color.fromARGB(255, 214, 214, 214),
-                width: 2.0,
-              ),
-              borderRadius: BorderRadius.circular(8.0),
+                return Container(
+                  margin: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color.fromARGB(255, 214, 214, 214),
+                      width: 2.0,
+                    ),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: buildDataItem(
+                              'ความชื้นในอากาศ',
+                              '$humidity%',
+                              Icons.cloud,
+                            ),
+                          ),
+                          Expanded(
+                            child: buildDataItem(
+                              'ความชื้นในดิน',
+                              '$soilMoisture%',
+                              Icons.grass,
+                            ),
+                          ),
+                          Expanded(
+                            child: buildDataItem(
+                              'อุณหภูมิ',
+                              '$temperature°C',
+                              Icons.thermostat,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: buildPumpToggleButton(pumpState),
+                          ),
+                          Expanded(
+                            child: buildLampToggleButton(lampState),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                      child: buildDataItem(
-                        'ความชื้นในอากาศ',
-                        '$humidity%',
-                        Icons.cloud,
-                      ),
-                    ),
-                    Expanded(
-                      child: buildDataItem(
-                        'ความชื้นในดิน',
-                        '$soilMoisture%',
-                        Icons.grass,
-                      ),
-                    ),
-                    Expanded(
-                      child: buildDataItem(
-                        'อุณหภูมิ',
-                        '$temperature°C',
-                        Icons.thermostat,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                      child: buildPumpToggleButton(pumpState),
-                    ),
-                    Expanded(
-                      child: buildLampToggleButton(lampState),
-                    ),
-                  ],
-                ),
-              ],
+
+            // เพิ่มปุ่ม "ดูบันทึก" ที่นี่
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ViewNotesPage(userUid: userUID),
+                  ),
+                );
+              },
+              child: const Text('ดูบันทึก'),
             ),
-          );
-        },
+          ],
+        ),
       ),
-
-      // เพิ่มปุ่ม "ดูบันทึก" ที่นี่
-      ElevatedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ViewNotesPage(userUid: userUID),
-            ),
-          );
-        },
-        child: const Text('ดูบันทึก'),
-      ),
-    ],
-  ),
-),
-
     );
   }
 

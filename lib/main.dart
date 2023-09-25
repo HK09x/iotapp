@@ -20,7 +20,28 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.lightGreen,
       ),
-      home: const LoginPage(),
+      home: FutureBuilder<User?>(
+        future: FirebaseAuth.instance.authStateChanges().first,
+        builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // กำลังโหลดสถานะ
+            return CircularProgressIndicator();
+          } else if (snapshot.hasError) {
+            // มีข้อผิดพลาดเกิดขึ้น
+            return Text('เกิดข้อผิดพลาด: ${snapshot.error}');
+          } else {
+            // ตรวจสอบสถานะการเข้าสู่ระบบ
+            final User? user = snapshot.data;
+            if (user != null) {
+              // User เข้าสู่ระบบแล้ว
+              return HomePage(user);
+            } else {
+              // User ยังไม่ได้เข้าสู่ระบบ
+              return LoginPage();
+            }
+          }
+        },
+      ),
     );
   }
 }
