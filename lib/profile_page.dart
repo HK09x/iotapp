@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:iotapp/change_password_page.dart';
 import 'package:iotapp/edit_profile_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final User? user;
 
-  ProfilePage({required this.user});
+  const ProfilePage({super.key, required this.user});
 
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -50,7 +52,23 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('โปรไฟล์'),
+        title: const Text('โปรไฟล์'),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.lock,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      const ChangePasswordPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Center(
         child: Padding(
@@ -62,14 +80,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 width: 150,
                 height: 150,
                 decoration: BoxDecoration(
-                  color: Colors.blue, // สีพื้นหลังสำหรับแบบ Neumorphism
+                  color: Colors.blue,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.5), // สีเงา
+                      color: Colors.grey.withOpacity(0.5),
                       spreadRadius: 5,
                       blurRadius: 7,
-                      offset: Offset(0, 3),
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
@@ -78,31 +96,45 @@ class _ProfilePageState extends State<ProfilePage> {
                   backgroundImage: NetworkImage(img),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text(
                 fullName,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 email,
-                style: TextStyle(fontSize: 18),
+                style: const TextStyle(fontSize: 18),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 'เบอร์โทรศัพท์: ${phoneNumber ?? 'ไม่มี'}',
-                style: TextStyle(fontSize: 18),
+                style: const TextStyle(fontSize: 18),
               ),
-               SizedBox(height: 20),
-                // แสดง UID ที่นี่
-                Text(
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () {
+                  if (widget.user != null && widget.user!.uid.isNotEmpty) {
+                    Clipboard.setData(ClipboardData(text: widget.user!.uid));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('คัดลอก UID สำเร็จ'),
+                      ),
+                    );
+                  }
+                },
+                child: Text(
                   'UID: ${widget.user?.uid}',
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
-              SizedBox(height: 20),
+              ),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.push(
@@ -129,18 +161,18 @@ class _ProfilePageState extends State<ProfilePage> {
                     }
                   });
                 },
-                icon: Icon(
+                icon: const Icon(
                   Icons.edit,
                   size: 24.0,
                 ),
-                label: Text('แก้ไขโปรไฟล์'),
+                label: const Text('แก้ไขโปรไฟล์'),
                 style: ElevatedButton.styleFrom(
-                  primary: Colors.blue,
+                  backgroundColor: Colors.blue,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  shadowColor: Colors.grey.withOpacity(0.5), // สีเงา
-                  elevation: 5, // ความสูงของเงา
+                  shadowColor: Colors.grey.withOpacity(0.5),
+                  elevation: 5,
                 ),
               ),
             ],

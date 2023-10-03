@@ -932,3 +932,1133 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
+
+Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    img.isNotEmpty
+        ? Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(img),
+                fit: BoxFit.cover,
+              ),
+            ),
+          )
+        : SizedBox(),
+    SizedBox(width: 60.0),
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('วันที่: $formattedDateString'),
+          Text('โรคที่พบ: $disease'),
+          Text('โรงเรือนที่: $house'),
+          Text('แปลงผักที่: $plot'),
+          Text('อุณหภูมิ : $temperature (°C)'),
+          Text('ความชื้น : $humidity (%)'),
+          Text('ความชื้นในดิน : $soilMoisture (%)'),
+        ],
+      ),
+    ),
+    PopupMenuButton<String>(
+      onSelected: (choice) {
+        if (choice == 'edit') {
+          // เรียกฟังก์ชันแก้ไขบันทึก
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EditNotePage(
+                userUid: widget.userUid,
+                noteId: note.id,
+              ),
+            ),
+          );
+        } else if (choice == 'delete') {
+          // เรียกฟังก์ชันลบบันทึก
+          _deleteNote(note.id);
+        }
+      },
+      itemBuilder: (BuildContext context) {
+        return ['edit', 'delete'].map((String choice) {
+          return PopupMenuItem<String>(
+            value: choice,
+            child: Text(choice == 'edit' ? 'แก้ไขบันทึก' : 'ลบบันทึก'),
+          );
+        }).toList();
+      },
+    ),
+  ],
+),
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:iotapp/add_note_page.dart';
+
+import 'package:iotapp/main.dart';
+import 'package:iotapp/note_page.dart';
+import 'package:iotapp/profile_page.dart';
+import 'package:iotapp/video_page.dart';
+
+class HomePage extends StatelessWidget {
+  final User user;
+
+  const HomePage(this.user, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final String userUID = user.uid;
+    double humidity = 0.0;
+    double soilMoisture = 0.0;
+    double temperature = 0.0;
+    int pumpState = 0;
+    int lampState = 0;
+    String ip = "";
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('IoT Smart Farm'),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (Route<dynamic> route) => false,
+              );
+            },
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final snapshot = await FirebaseFirestore.instance
+                  .collection('sensor_data')
+                  .doc(userUID)
+                  .collection('house')
+                  .doc('plot')
+                  .get();
+
+              if (snapshot.exists) {
+                final data = snapshot.data() as Map<String, dynamic>;
+                ip = data['ip'] ?? "";
+
+                bool isHttps = ip.toLowerCase().startsWith("http://");
+                if (!isHttps) {
+                  ip = "http://$ip";
+                }
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VideoPlayerScreen(videoUrl: ip),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('ไม่พบข้อมูล URL ใน Cloud Firestore'),
+                  ),
+                );
+              }
+            },
+            child: const Text('วิดีโอ'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilePage(
+                    user: user,
+                  ),
+                ),
+              );
+            },
+            child: const Text('ไปยังโปรไฟล์'),
+          )
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20), // เพิ่มระยะห่างด้านบน
+
+            // เริ่มต้นการดึงข้อมูลโรงเรือนและแสดงข้อมูล
+            FutureBuilder<String>(
+              future: fetchSchoolInfo(userUID),
+              builder: (context, schoolInfoSnapshot) {
+                if (schoolInfoSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                }
+
+                final schoolInfo = schoolInfoSnapshot.data ?? "";
+
+                if (schoolInfo.isNotEmpty) {
+                  return Container(
+                    margin: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color.fromARGB(255, 214, 214, 214),
+                        width: 2.0,
+                      ),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'ข้อมูลโรงเรือน:',
+                          style: TextStyle(
+                            fontSize: 20.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          schoolInfo,
+                          style: TextStyle(
+                            fontSize: 16.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  return Container(); // ถ้าไม่มีข้อมูลโรงเรือนให้แสดงช่องว่าง
+                }
+              },
+            ),
+
+            // สิ้นสุดการดึงข้อมูลโรงเรือนและแสดงข้อมูล
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('sensor_data')
+                  .doc(userUID)
+                  .collection('house')
+                  .doc('plot')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text('ไม่สามารถเชื่อมต่อข้อมูลได้');
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
+
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  humidity = (data['humidity'] as num?)?.toDouble() ?? 0.0;
+                  soilMoisture =
+                      (data['soilMoisture'] as num?)?.toDouble() ?? 0.0;
+                  temperature =
+                      (data['temperature'] as num?)?.toDouble() ?? 0.0;
+                  pumpState = (data['pump_state'] as num?)?.toInt() ?? 0;
+                  lampState = (data['lamp_state'] as num?)?.toInt() ?? 0;
+                }
+
+                return Container(
+                  margin: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color.fromARGB(255, 214, 214, 214),
+                      width: 2.0,
+                    ),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: buildDataItem(
+                              'ความชื้นในอากาศ',
+                              '$humidity%',
+                              Icons.cloud,
+                            ),
+                          ),
+                          Expanded(
+                            child: buildDataItem(
+                              'ความชื้นในดิน',
+                              '$soilMoisture%',
+                              Icons.grass,
+                            ),
+                          ),
+                          Expanded(
+                            child: buildDataItem(
+                              'อุณหภูมิ',
+                              '$temperature°C',
+                              Icons.thermostat,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: buildPumpToggleButton(pumpState),
+                          ),
+                          Expanded(
+                            child: buildLampToggleButton(lampState),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            // เพิ่มปุ่ม "ดูบันทึก" ที่นี่
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ViewNotesPage(userUid: userUID),
+                  ),
+                );
+              },
+              child: const Text('ดูบันทึก'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildDataItem(String label, String value, IconData iconData) {
+    return Container(
+      margin: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            iconData,
+            size: 24.0,
+            color: Colors.blue,
+          ),
+          const SizedBox(height: 8.0),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8.0),
+          Text(value, style: const TextStyle(fontSize: 16.0)),
+        ],
+      ),
+    );
+  }
+
+  buildPumpToggleButton(int state) {
+    return GestureDetector(
+      onTap: () {
+        int newToggleState = state == 0 ? 1 : 0;
+
+        FirebaseFirestore.instance
+            .collection('sensor_data')
+            .doc(user.uid)
+            .collection('house')
+            .doc('plot')
+            .update({
+          'pump_state': newToggleState,
+        }).then((_) {
+          print('อัปเดตสถานะปั๊มน้ำสำเร็จ');
+        }).catchError((error) {
+          print('เกิดข้อผิดพลาดในการอัปเดตปั๊มน้ำ: $error');
+        });
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            FontAwesomeIcons.water,
+            size: 24.0,
+            color: state == 1 ? Colors.green : Colors.red,
+          ),
+          const SizedBox(height: 8.0),
+          const Text(
+            'ปั๊มน้ำ',
+            style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8.0),
+          Container(
+            width: 100,
+            height: 50,
+            decoration: BoxDecoration(
+              color: state == 1 ? Colors.green : Colors.red,
+              borderRadius: BorderRadius.circular(15.0),
+            ),
+            child: Center(
+              child: Text(
+                state == 1 ? 'เปิด' : 'ปิด',
+                style: const TextStyle(fontSize: 16.0),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  buildLampToggleButton(int state) {
+    return GestureDetector(
+      onTap: () {
+        int newToggleState = state == 0 ? 1 : 0;
+
+        FirebaseFirestore.instance
+            .collection('sensor_data')
+            .doc(user.uid)
+            .collection('house')
+            .doc('plot')
+            .update({
+          'lamp_state': newToggleState,
+        }).then((_) {
+          print('อัปเดตสถานะหลอดไฟสำเร็จ');
+        }).catchError((error) {
+          print('เกิดข้อผิดพลาดในการอัปเดตหลอดไฟ: $error');
+        });
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            FontAwesomeIcons.lightbulb,
+            size: 24.0,
+            color: state == 1 ? Colors.green : Colors.red,
+          ),
+          const SizedBox(height: 8.0),
+          const Text(
+            'หลอดไฟ',
+            style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8.0),
+          Container(
+            width: 100,
+            height: 50,
+            decoration: BoxDecoration(
+              color: state == 1 ? Colors.green : Colors.red,
+              borderRadius: BorderRadius.circular(15.0),
+            ),
+            child: Center(
+              child: Text(
+                state == 1 ? 'เปิด' : 'ปิด',
+                style: const TextStyle(fontSize: 16.0),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String> fetchSchoolInfo(String userUID) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userUID)
+          .get();
+
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>;
+        final schoolInfo = data['info'] as String;
+        return schoolInfo;
+      } else {
+        return '';
+      }
+    } catch (e) {
+      print('เกิดข้อผิดพลาดในการดึงข้อมูลโรงเรียน: $e');
+      return '';
+    }
+  }
+}
+
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:iotapp/house_page.dart'; // Import HousePage
+
+class HomePage extends StatelessWidget {
+  final User? user; // ทำให้ user เป็น nullable
+
+  const HomePage(this.user, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    if (user == null) {
+      // กรณี user เป็น null
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('IoT Smart Farm - Home Page'),
+        ),
+        body: Center(
+          child: Text('ไม่พบข้อมูลผู้ใช้'),
+        ),
+      );
+    }
+
+    final String userUID = user!.uid;
+
+    return Scaffold(
+  appBar: AppBar(
+    title: Text('IoT Smart Farm - Home Page'),
+  ),
+  body: StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('sensor_data')
+        .doc(userUID)
+        .collection('house')
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return CircularProgressIndicator();
+      }
+
+      if (snapshot.hasError) {
+        return Text('เกิดข้อผิดพลาด: ${snapshot.error}');
+      }
+
+      if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+        // มี Document ใน Collection ใน Firestore สำหรับผู้ใช้นี้
+        // แสดงรายการโรงเรือนทั้งหมด
+        return ListView(
+          children: snapshot.data!.docs.map((document) {
+            final houseName =
+                document.id; // ชื่อ Document คือชื่อของโรงเรือน
+
+            // คำนวณหมายเลขของโรงเรือน (houseNumber) จากชื่อ Document
+            final houseNumber =
+    int.tryParse(houseName.replaceAll('house', '')) ?? 0;
+
+
+            if (houseNumber != null) {
+              // กำหนดค่า houseNumber ได้ถูกแปลงเป็น int สำเร็จ
+              return Container(
+                margin: EdgeInsets.all(8.0), // เพิ่มระยะห่างขอบ
+                padding: EdgeInsets.all(8.0), // เพิ่มระยะห่างภายใน
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.blue, // สีเส้นขอบ
+                    width: 2.0, // ความหนาขอบ
+                  ),
+                  borderRadius: BorderRadius.circular(10.0), // รูปร่างขอบ
+                ),
+                child: ListTile(
+                  title: Text('นี่คือ โรงเรือนที่$houseNumber'),
+                  onTap: () {
+                    // เมื่อคลิกที่รายการของโรงเรือน
+                    // นำ userUID และ houseName ไปยังหน้า HousePage
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HousePage(
+                          user: user!,
+                          userUID: userUID,
+                          houseName: houseName,
+                          houseNumber: houseNumber,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            } else {
+              // ไม่สามารถแปลง houseName เป็น int ได้
+              // ดำเนินการตามความต้องการ
+              return Container(); // หรือในกรณีอื่น ๆ ที่คุณต้องการ
+            }
+          }).toList(),
+        );
+      } else {
+        // ไม่มี Document ใน Collection ใน Firestore สำหรับผู้ใช้นี้
+        return Text('ไม่มีโรงเรือนใน Firestore');
+      }
+    },
+  ),
+);
+
+  }
+}
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:iotapp/add_note_page.dart';
+import 'package:iotapp/edit_note_page.dart';
+
+class ViewNotesPage extends StatefulWidget {
+  final String userUid;
+
+  const ViewNotesPage({Key? key, required this.userUid}) : super(key: key);
+
+  @override
+  _ViewNotesPageState createState() => _ViewNotesPageState();
+}
+
+class _ViewNotesPageState extends State<ViewNotesPage> {
+  String? selectedHouse; // เพิ่มตัวแปรเก็บข้อมูลของโรงเรือนที่เลือก
+
+   @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('บันทึกของคุณ'),
+        actions: <Widget>[
+          DropdownButton<String>(
+            value: selectedHouse,
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedHouse = newValue;
+              });
+            },
+            items: <String>[
+              'ทั้งหมด',
+              '1',
+              '2',
+              '3',
+              '4',
+              '5',
+            ].map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddNotePage(
+                    userUid: widget.userUid,
+                  ),
+                ),
+              );
+            },
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: selectedHouse == null || selectedHouse == 'ทั้งหมด'
+            ? FirebaseFirestore.instance
+                .collection('user_notes')
+                .doc(widget.userUid)
+                .collection('notes')
+                .orderBy('day', descending: true)
+                .snapshots()
+            : FirebaseFirestore.instance
+                .collection('user_notes')
+                .doc(widget.userUid)
+                .collection('notes')
+                .where('house', isEqualTo: selectedHouse) // ตรวจสอบค่า 'house' ที่ถูกกรอง
+                .orderBy('day', descending: true)
+                .snapshots(),
+
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text('เกิดข้อผิดพลาด: ${snapshot.error}'),
+            );
+          } else if (!snapshot.hasData || snapshot.data == null) {
+            return Center(
+              child: Text('ยังไม่มีบันทึก'),
+            );
+          }
+
+          final notes = snapshot.data!.docs;
+
+          if (notes.isEmpty) {
+            return Center(
+              child: Text('ไม่พบบันทึกสำหรับโรงเรือนที่เลือก'),
+            );
+          }
+
+          return ListView.separated(
+            itemCount: notes.length,
+            separatorBuilder: (BuildContext context, int index) {
+              return const Divider();
+            },
+            itemBuilder: (BuildContext context, int index) {
+              final note = notes[index];
+              final day = note['day'];
+              final disease = note['disease'];
+              final img = note['img']; // URL ของรูปภาพ
+              final house = note['house'];
+              final plot = note['plot'];
+              final temperature = note['temperature'];
+              final humidity = note['humidity'];
+              final soilMoisture = note['soil_moisture'];
+
+              final formattedDate = (day as Timestamp).toDate();
+              final formattedDateString =
+                  "${formattedDate.day}/${formattedDate.month}/${formattedDate.year}";
+
+              return Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Card(
+                  color: const Color.fromARGB(255, 126, 120, 120),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        img.isNotEmpty
+                            ? Container(
+                                width: 150,
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: NetworkImage(img),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(),
+                        const SizedBox(width: 60.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('วันที่: $formattedDateString'),
+                              Text('โรคที่พบ: $disease'),
+                              Text('โรงเรือนที่: $house'),
+                              Text('แปลงผักที่: $plot'),
+                              Text('อุณหภูมิ : $temperature (°C)'),
+                              Text('ความชื้น : $humidity (%)'),
+                              Text('ความชื้นในดิน : $soilMoisture (%)'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          onSelected: (choice) {
+                            if (choice == 'edit') {
+                              // เรียกฟังก์ชันแก้ไขบันทึก
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditNotePage(
+                                    userUid: widget.userUid,
+                                    noteId: note.id,
+                                  ),
+                                ),
+                              );
+                            } else if (choice == 'delete') {
+                              // เรียกฟังก์ชันลบบันทึก
+                              _deleteNote(note.id);
+                            }
+                          },
+                          itemBuilder: (BuildContext context) {
+                            return ['edit', 'delete'].map((String choice) {
+                              return PopupMenuItem<String>(
+                                value: choice,
+                                child: Text(choice == 'edit'
+                                    ? 'แก้ไขบันทึก'
+                                    : 'ลบบันทึก'),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // ฟังก์ชันลบบันทึก
+  Future<void> _deleteNote(String noteId) async {
+    try {
+      // ลบบันทึกจาก Firestore
+      await FirebaseFirestore.instance
+          .collection('user_notes')
+          .doc(widget.userUid)
+          .collection('notes')
+          .doc(noteId)
+          .delete();
+
+      // แสดงแจ้งเตือนว่าบันทึกถูกลบแล้ว
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('บันทึกถูกลบแล้ว'),
+        ),
+      );
+    } catch (error) {
+      // กรณีเกิดข้อผิดพลาดในการลบ
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('เกิดข้อผิดพลาดในการลบบันทึก'),
+        ),
+      );
+    }
+  }
+}
+
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:iotapp/add_note_page.dart';
+import 'package:iotapp/edit_note_page.dart';
+import 'package:flutter_dropdown/flutter_dropdown.dart';
+
+class ViewNotesPage extends StatefulWidget {
+  final String userUid;
+
+  const ViewNotesPage({Key? key, required this.userUid}) : super(key: key);
+
+  @override
+  _ViewNotesPageState createState() => _ViewNotesPageState();
+}
+
+class _ViewNotesPageState extends State<ViewNotesPage> {
+  String? selectedHouse; // เพิ่มตัวแปรเก็บข้อมูลของโรงเรือนที่เลือก
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('บันทึกของคุณ'),
+        actions: <Widget>[
+          DropdownButton<String>(
+            value: selectedHouse,
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedHouse = newValue;
+              });
+            },
+            items: const <DropdownMenuItem<String>>[
+              DropdownMenuItem<String>(
+                value: '',
+                child: Text('ทั้งหมด'),
+              ),
+              DropdownMenuItem<String>(
+                value: '1',
+                child: Text('โรงเรือนที่1'),
+              ),
+              DropdownMenuItem<String>(
+                value: '2',
+                child: Text('โรงเรือนที่2'),
+              ),
+              DropdownMenuItem<String>(
+                value: '3',
+                child: Text('โรงเรือนที่3'),
+              ),
+              DropdownMenuItem<String>(
+                value: '4',
+                child: Text('โรงเรือนที่4'),
+              ),
+              DropdownMenuItem<String>(
+                value: '5',
+                child: Text('โรงเรือนที่5'),
+              ),
+            ],
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddNotePage(
+                    userUid: widget.userUid,
+                  ),
+                ),
+              );
+            },
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: selectedHouse == null || selectedHouse == 'ทั้งหมด'
+            ? FirebaseFirestore.instance
+                .collection('user_notes')
+                .doc(widget.userUid)
+                .collection('notes')
+                .orderBy('day', descending: true)
+                .snapshots()
+            : FirebaseFirestore.instance
+                .collection('user_notes')
+                .doc(widget.userUid)
+                .collection('notes')
+                .where('house',
+                    isEqualTo: selectedHouse) // ตรวจสอบค่า 'house' ที่ถูกกรอง
+                .orderBy('day', descending: true)
+                .snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text('เกิดข้อผิดพลาด: ${snapshot.error}'),
+            );
+          } else if (!snapshot.hasData || snapshot.data == null) {
+            return Center(
+              child: Text('ยังไม่มีบันทึก'),
+            );
+          }
+
+          final notes = snapshot.data!.docs;
+
+          if (notes.isEmpty) {
+            return Center(
+              child: Text('ไม่พบบันทึกสำหรับโรงเรือนที่เลือก'),
+            );
+          }
+
+          return ListView.separated(
+            itemCount: notes.length,
+            separatorBuilder: (BuildContext context, int index) {
+              return const Divider();
+            },
+            itemBuilder: (BuildContext context, int index) {
+              final note = notes[index];
+              final day = note['day'];
+              final disease = note['disease'];
+              final img = note['img']; // URL ของรูปภาพ
+              final house = note['house'];
+              final plot = note['plot'];
+              final temperature = note['temperature'];
+              final humidity = note['humidity'];
+              final soilMoisture = note['soil_moisture'];
+
+              final formattedDate = (day as Timestamp).toDate();
+              final formattedDateString =
+                  "${formattedDate.day}/${formattedDate.month}/${formattedDate.year}";
+
+              return Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Card(
+                  color: const Color.fromARGB(255, 126, 120, 120),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        img.isNotEmpty
+                            ? Container(
+                                width: 150,
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: NetworkImage(img),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(),
+                        const SizedBox(width: 60.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('วันที่: $formattedDateString'),
+                              Text('โรคที่พบ: $disease'),
+                              Text('โรงเรือนที่: $house'),
+                              Text('แปลงผักที่: $plot'),
+                              Text('อุณหภูมิ : $temperature (°C)'),
+                              Text('ความชื้น : $humidity (%)'),
+                              Text('ความชื้นในดิน : $soilMoisture (%)'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          onSelected: (choice) {
+                            if (choice == 'edit') {
+                              // เรียกฟังก์ชันแก้ไขบันทึก
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditNotePage(
+                                    userUid: widget.userUid,
+                                    noteId: note.id,
+                                  ),
+                                ),
+                              );
+                            } else if (choice == 'delete') {
+                              // เรียกฟังก์ชันลบบันทึก
+                              _deleteNote(note.id);
+                            }
+                          },
+                          itemBuilder: (BuildContext context) {
+                            return ['edit', 'delete'].map((String choice) {
+                              return PopupMenuItem<String>(
+                                value: choice,
+                                child: Text(choice == 'edit'
+                                    ? 'แก้ไขบันทึก'
+                                    : 'ลบบันทึก'),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // ฟังก์ชันลบบันทึก
+  Future<void> _deleteNote(String noteId) async {
+    try {
+      // ลบบันทึกจาก Firestore
+      await FirebaseFirestore.instance
+          .collection('user_notes')
+          .doc(widget.userUid)
+          .collection('notes')
+          .doc(noteId)
+          .delete();
+
+      // แสดงแจ้งเตือนว่าบันทึกถูกลบแล้ว
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('บันทึกถูกลบแล้ว'),
+        ),
+      );
+    } catch (error) {
+      // กรณีเกิดข้อผิดพลาดในการลบ
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('เกิดข้อผิดพลาดในการลบบันทึก'),
+        ),
+      );
+    }
+  }
+}
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
+
+class ChartPage extends StatelessWidget {
+  final String houseName;
+  final User? user;
+
+  const ChartPage({Key? key, required this.houseName, this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Sensor Data Chart for $houseName'),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user?.uid)
+            .collection(houseName)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Text('เกิดข้อผิดพลาด: ${snapshot.error}');
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CircularProgressIndicator();
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Text('ไม่พบข้อมูลเซ็นเซอร์');
+          }
+
+          final sensorData = snapshot.data!.docs;
+
+          final List<ChartData> chartData = sensorData.map((data) {
+            final humidity = (data['humidity'] as num).toDouble();
+            final temperature = (data['temperature'] as num).toDouble();
+            final soilMoisture = (data['soilMoisture'] as num).toDouble();
+            final timestamp = data.id;
+
+            return ChartData(
+              timestamp: timestamp,
+              humidity: humidity,
+              temperature: temperature,
+              soilMoisture: soilMoisture,
+            );
+          }).toList();
+
+          return Container(
+            margin: EdgeInsets.all(8.0),
+            height: 300,
+            width: 500,
+            child: SfCartesianChart(
+              primaryXAxis: CategoryAxis(),
+              primaryYAxis: NumericAxis(),
+              tooltipBehavior: TooltipBehavior(
+                enable: true, // เปิดใช้งาน Tooltip
+              ),
+              series: <ChartSeries>[
+                LineSeries<ChartData, String>(
+                  name: 'Humidity',
+                  dataSource: chartData,
+                  xValueMapper: (data, _) => data.timestamp,
+                  yValueMapper: (data, _) => data.humidity,
+                  width: 2,
+                  color: Colors.blue,
+                ),
+                LineSeries<ChartData, String>(
+                  name: 'Temperature',
+                  dataSource: chartData,
+                  xValueMapper: (data, _) => data.timestamp,
+                  yValueMapper: (data, _) => data.temperature,
+                  width: 2,
+                  color: Colors.green,
+                ),
+                LineSeries<ChartData, String>(
+                  name: 'Soil Moisture',
+                  dataSource: chartData,
+                  xValueMapper: (data, _) => data.timestamp,
+                  yValueMapper: (data, _) => data.soilMoisture,
+                  width: 2,
+                  color: Colors.orange,
+                ),
+              ],
+              legend: Legend(
+                isVisible: true,
+                position: LegendPosition.bottom,
+                textStyle: TextStyle(fontSize: 12),
+                overflowMode: LegendItemOverflowMode.wrap,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ChartData {
+  final String timestamp;
+  final double humidity;
+  final double temperature;
+  final double soilMoisture;
+
+  ChartData({
+    required this.timestamp,
+    required this.humidity,
+    required this.temperature,
+    required this.soilMoisture,
+  });
+}

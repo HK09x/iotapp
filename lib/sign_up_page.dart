@@ -20,7 +20,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _password2Controller = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
-final TextEditingController _imgController = TextEditingController();
+  final TextEditingController _infoController = TextEditingController();
+  final TextEditingController _imgController = TextEditingController();
   bool _isPhoneNumberValid = true;
   bool _isPasswordMatch = true;
   String? _emailErrorText;
@@ -60,6 +61,7 @@ final TextEditingController _imgController = TextEditingController();
         final String phoneNumber = _phoneNumberController.text;
         final String email = _emailController.text;
         final String img = _imgController.text;
+        final String info = _infoController.text;
 
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'ID_users': uid,
@@ -67,6 +69,7 @@ final TextEditingController _imgController = TextEditingController();
           'Phone_Number': phoneNumber,
           'Email': email,
           'img': img,
+          'info': info,
         });
 
         widget.callToSignIn();
@@ -169,7 +172,7 @@ final TextEditingController _imgController = TextEditingController();
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          LoginPage(), // หรือชื่อหน้าเข้าสู่ระบบ
+                          const LoginPage(), // หรือชื่อหน้าเข้าสู่ระบบ
                     ),
                   );
                 }
@@ -186,7 +189,7 @@ final TextEditingController _imgController = TextEditingController();
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            LoginPage(), // สร้างหน้าใหม่ของ Login
+                            const LoginPage(), // สร้างหน้าใหม่ของ Login
                       ),
                     );
                   },

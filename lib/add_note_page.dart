@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
@@ -6,9 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class AddNotePage extends StatefulWidget {
-  final User user; 
+  final String userUid;
 
-  const AddNotePage({Key? key, required this.user}) : super(key: key);
+  const AddNotePage({Key? key, required this.userUid}) : super(key: key);
 
   @override
   _AddNotePageState createState() => _AddNotePageState();
@@ -22,7 +21,6 @@ class _AddNotePageState extends State<AddNotePage> {
   final TextEditingController _humidityController = TextEditingController();
   final TextEditingController _soilMoistureController = TextEditingController();
   File? pickedImage;
-
   DateTime? selectedDate;
 
   void _addNote() async {
@@ -43,7 +41,7 @@ class _AddNotePageState extends State<AddNotePage> {
         humidity.isNotEmpty &&
         soilMoisture.isNotEmpty) {
       // Upload the image (if available) to Firebase Storage
-      String imageUrl = ''; 
+      String imageUrl = '';
       if (pickedImage != null) {
         imageUrl = await _uploadImage(pickedImage!);
       }
@@ -51,12 +49,12 @@ class _AddNotePageState extends State<AddNotePage> {
       // Add the note to Firestore, including the image URL
       FirebaseFirestore.instance
           .collection('user_notes')
-          .doc(widget.user.uid)
+          .doc(widget.userUid)
           .collection('notes')
           .add({
         'day': dayTimestamp,
         'disease': disease,
-        'img': imageUrl, 
+        'img': imageUrl,
         'house': house,
         'plot': plot,
         'temperature': temperature,
@@ -90,7 +88,7 @@ class _AddNotePageState extends State<AddNotePage> {
     final storageReference = FirebaseStorage.instance
         .ref()
         .child('user_images')
-        .child('${widget.user.uid}')
+        .child(widget.userUid)
         .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
 
     final UploadTask uploadTask = storageReference.putFile(imageFile);
@@ -171,6 +169,9 @@ class _AddNotePageState extends State<AddNotePage> {
               TextField(
                 controller: _houseController,
                 decoration: const InputDecoration(labelText: 'โรงเรือนที่'),
+                onChanged: (houseName) {
+                  _fetchSensorDataForHouse(houseName);
+                },
               ),
               TextField(
                 controller: _plotController,
@@ -243,6 +244,51 @@ class _AddNotePageState extends State<AddNotePage> {
       setState(() {
         pickedImage = File(pickedFile.path);
       });
+    }
+  }
+
+  Future<void> _fetchSensorDataForHouse(String houseNumber) async {
+    String collectionName = '';
+
+    // แปลงเลขที่ผู้ใช้ป้อนใน TextField เป็นชื่อ Collection
+    switch (houseNumber) {
+      case '1':
+        collectionName = 'house0';
+        break;
+      case '2':
+        collectionName = 'house1';
+        break;
+      case '3':
+        collectionName = 'house2';
+        break;
+      case '4':
+        collectionName = 'house3';
+        break;
+      case '5':
+        collectionName = 'house4';
+        break;
+      // คุณอาจจะต้องเพิ่มเงื่อนไขเพิ่มเติมหากต้องการรองรับค่าเลขอื่น ๆ
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('sensor_data')
+          .doc(widget.userUid)
+          .collection(collectionName)
+          .doc('plot')
+          .get();
+
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>;
+
+        setState(() {
+          _temperatureController.text = data['temperature'].toString();
+          _humidityController.text = data['humidity'].toString();
+          _soilMoistureController.text = data['soilMoisture'].toString();
+        });
+      }
+    } catch (e) {
+      print('Error fetching sensor data: $e');
     }
   }
 }

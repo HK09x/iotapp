@@ -18,14 +18,18 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Firebase IOT',
       theme: ThemeData(
-        primarySwatch: Colors.lightGreen,
+        primarySwatch: Colors.green, // สีของแท็บบาร์
+        scaffoldBackgroundColor: Colors.white, // สีพื้นหลังของ Scaffold
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.green, // สีพื้นหลังของ AppBar
+        ),
       ),
       home: FutureBuilder<User?>(
         future: FirebaseAuth.instance.authStateChanges().first,
         builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             // กำลังโหลดสถานะ
-            return CircularProgressIndicator();
+            return const CircularProgressIndicator();
           } else if (snapshot.hasError) {
             // มีข้อผิดพลาดเกิดขึ้น
             return Text('เกิดข้อผิดพลาด: ${snapshot.error}');
@@ -37,7 +41,7 @@ class MyApp extends StatelessWidget {
               return HomePage(user);
             } else {
               // User ยังไม่ได้เข้าสู่ระบบ
-              return LoginPage();
+              return const LoginPage();
             }
           }
         },
@@ -58,7 +62,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             );
                           } on FirebaseAuthException catch (e) {
-                            if (e.code == 'user-not-found') {
+                            if (e. code == 'user-not-found') {
                               setState(() {
                                 _errorMessage = 'ไม่พบผู้ใช้งานด้วยอีเมลนี้';
                               });
@@ -154,7 +157,7 @@ class _LoginPageState extends State<LoginPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(_errorMessage),
-                                duration: Duration(
+                                duration: const Duration(
                                     seconds: 3), // แสดงเป็นเวลา 3 วินาที
                               ),
                             );

@@ -234,3 +234,143 @@ class _ViewNotesPageState extends State<ViewNotesPage> {
     }
   }
 }
+import 'package:flutter/material.dart';
+import 'package:iotapp/chart.dart'; // นำเข้า SensorDataChart
+
+class HousePage extends StatelessWidget {
+  final User? user;
+  final String houseName;
+  final int houseNumber;
+
+  const HousePage({
+    Key? key,
+    required this.user,
+    required this.houseName,
+    required this.houseNumber,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    double humidity = 0.0;
+    double soilMoisture = 0.0;
+    double temperature = 0.0;
+    int pumpState = 0;
+    int lampState = 0;
+    String ip = "";
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('IoT Smart Farm'),
+        // ...
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20),
+
+            // แสดงข้อมูลโรงเรือน (หากมี)
+            // ...
+
+            // แสดงข้อมูลเซ็นเซอร์
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('sensor_data')
+                  .doc(user?.uid)
+                  .collection(houseName)
+                  .doc('plot')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text('ไม่สามารถเชื่อมต่อข้อมูลได้');
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
+
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  humidity = (data['humidity'] as num?)?.toDouble() ?? 0.0;
+                  soilMoisture =
+                      (data['soilMoisture'] as num?)?.toDouble() ?? 0.0;
+                  temperature =
+                      (data['temperature'] as num?)?.toDouble() ?? 0.0;
+                  pumpState = (data['pump_state'] as num?)?.toInt() ?? 0;
+                  lampState = (data['lamp_state'] as num?)?.toInt() ?? 0;
+                  
+                  // ดึงข้อมูลกราฟย้อนหลังจาก Firestore
+                  final List<DataPoint> chartData = List.generate(10, (index) {
+                    // ดำเนินการดึงข้อมูลกราฟจาก Firestore ได้ที่นี่
+                    // ในตัวอย่างนี้จะใช้ค่าสุ่มเป็นตัวอย่าง
+                    final timestamp = DateTime.now().subtract(Duration(days: 9 - index));
+                    final value = (index * 10).toDouble();
+                    return DataPoint(timestamp: timestamp, value: value);
+                  });
+
+                  // สร้าง Widget แสดงกราฟและข้อมูลเซ็นเซอร์
+                  return Column(
+                    children: [
+                      SensorDataChart(dataPoints: chartData), // แสดงกราฟ
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: buildDataItem(
+                              'ความชื้นในอากาศ',
+                              '$humidity%',
+                              Icons.cloud,
+                            ),
+                          ),
+                          Expanded(
+                            child: buildDataItem(
+                              'ความชื้นในดิน',
+                              '$soilMoisture%',
+                              Icons.grass,
+                            ),
+                          ),
+                          Expanded(
+                            child: buildDataItem(
+                              'อุณหภูมิ',
+                              '$temperature°C',
+                              Icons.thermostat,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: buildPumpToggleButton(pumpState),
+                          ),
+                          Expanded(
+                            child: buildLampToggleButton(lampState),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Container(); // หากไม่มีข้อมูลเซ็นเซอร์
+              },
+            ),
+
+            // ปุ่มดูบันทึก
+            ElevatedButton(
+              onPressed: () {
+                // ...
+              },
+              child: const Text('ดูบันทึก'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ...
+}

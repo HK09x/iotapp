@@ -1,11 +1,15 @@
+import 'dart:io';
+
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 
 class EditNotePage extends StatefulWidget {
   final String userUid;
   final String noteId;
 
-  EditNotePage({required this.userUid, required this.noteId});
+  const EditNotePage({super.key, required this.userUid, required this.noteId});
 
   @override
   _EditNotePageState createState() => _EditNotePageState();
@@ -13,12 +17,14 @@ class EditNotePage extends StatefulWidget {
 
 class _EditNotePageState extends State<EditNotePage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  TextEditingController _diseaseController = TextEditingController();
-  TextEditingController _houseController = TextEditingController();
-  TextEditingController _plotController = TextEditingController();
-  TextEditingController _temperatureController = TextEditingController();
-  TextEditingController _humidityController = TextEditingController();
-  TextEditingController _soilMoistureController = TextEditingController();
+  final TextEditingController _diseaseController = TextEditingController();
+  final TextEditingController _houseController = TextEditingController();
+  final TextEditingController _plotController = TextEditingController();
+  final TextEditingController _temperatureController = TextEditingController();
+  final TextEditingController _humidityController = TextEditingController();
+  final TextEditingController _soilMoistureController = TextEditingController();
+  XFile? _pickedImage; // เปลี่ยนจาก File เป็น XFile สำหรับ ImagePicker
+  String? _currentImageUrl; // เก็บ URL รูปภาพปัจจุบัน
 
   @override
   void initState() {
@@ -42,25 +48,99 @@ class _EditNotePageState extends State<EditNotePage> {
         _temperatureController.text = data['temperature'].toString();
         _humidityController.text = data['humidity'].toString();
         _soilMoistureController.text = data['soil_moisture'].toString();
+
+        // กำหนดค่า _currentImageUrl ให้มีค่าเท่ากับ URL ปัจจุบัน
+        _currentImageUrl = data['img'];
       }
     });
+  }
+
+  // ฟังก์ชันอัปโหลดรูปภาพ
+  Future<String> _uploadImage(XFile imageFile) async {
+    final storageReference = FirebaseStorage.instance
+        .ref()
+        .child('user_images')
+        .child('${widget.userUid}')
+        .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+    final UploadTask uploadTask =
+        storageReference.putFile(File(imageFile.path));
+
+    final TaskSnapshot downloadUrl = await uploadTask;
+    final String url = await downloadUrl.ref.getDownloadURL();
+
+    return url;
+  }
+
+  // ฟังก์ชันอัปโหลดและอัปเดตรูปภาพ
+  Future<void> _uploadAndReplaceImage(XFile imageFile) async {
+    // ตรวจสอบว่ามีรูปภาพที่ถูกเลือกหรือไม่
+    if (imageFile != null) {
+      // อัปโหลดรูปภาพที่ถูกเลือกไปยัง Firebase Storage
+      final imageUrl = await _uploadImage(imageFile);
+
+      // อัปเดตข้อมูลใน Firestore โดยใช้ URL ของรูปภาพใหม่
+      FirebaseFirestore.instance
+          .collection('user_notes')
+          .doc(widget.userUid)
+          .collection('notes')
+          .doc(widget.noteId)
+          .update({'img': imageUrl}).then((_) {
+        // แสดงแจ้งเตือนหรือทำอย่างอื่นตามที่คุณต้องการ
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('รูปภาพถูกบันทึกแล้ว'),
+          ),
+        );
+      }).catchError((error) {
+        // กรณีเกิดข้อผิดพลาดในการอัปเดตข้อมูล
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('เกิดข้อผิดพลาดในการอัปเดตข้อมูล: $error'),
+          ),
+        );
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImage = pickedFile;
+      });
+    }
+  }
+
+  Future<void> _takePicture() async {
+    final picker = ImagePicker();
+    final pickedFile =
+        await picker.pickImage(source: ImageSource.camera); // ถ่ายรูป
+
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImage = pickedFile;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('แก้ไขบันทึก'),
+        title: const Text('แก้ไขบันทึก'),
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
               TextFormField(
                 controller: _diseaseController,
-                decoration: InputDecoration(labelText: 'โรคที่พบ'),
+                decoration: const InputDecoration(labelText: 'โรคที่พบ'),
                 validator: (value) {
                   if (value!.isEmpty) {
                     return 'กรุณากรอกโรคที่พบ';
@@ -70,7 +150,7 @@ class _EditNotePageState extends State<EditNotePage> {
               ),
               TextFormField(
                 controller: _houseController,
-                decoration: InputDecoration(labelText: 'โรงเรือนที่'),
+                decoration: const InputDecoration(labelText: 'โรงเรือนที่'),
                 validator: (value) {
                   if (value!.isEmpty) {
                     return 'กรุณากรอกโรงเรือนที่';
@@ -80,7 +160,7 @@ class _EditNotePageState extends State<EditNotePage> {
               ),
               TextFormField(
                 controller: _plotController,
-                decoration: InputDecoration(labelText: 'แปลงผักที่'),
+                decoration: const InputDecoration(labelText: 'แปลงผักที่'),
                 validator: (value) {
                   if (value!.isEmpty) {
                     return 'กรุณากรอกแปลงผักที่';
@@ -90,7 +170,7 @@ class _EditNotePageState extends State<EditNotePage> {
               ),
               TextFormField(
                 controller: _temperatureController,
-                decoration: InputDecoration(labelText: 'อุณหภูมิ (°C)'),
+                decoration: const InputDecoration(labelText: 'อุณหภูมิ (°C)'),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value!.isEmpty) {
@@ -102,7 +182,7 @@ class _EditNotePageState extends State<EditNotePage> {
               ),
               TextFormField(
                 controller: _humidityController,
-                decoration: InputDecoration(labelText: 'ความชื้น (%)'),
+                decoration: const InputDecoration(labelText: 'ความชื้น (%)'),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value!.isEmpty) {
@@ -114,7 +194,7 @@ class _EditNotePageState extends State<EditNotePage> {
               ),
               TextFormField(
                 controller: _soilMoistureController,
-                decoration: InputDecoration(labelText: 'ความชื้นในดิน (%)'),
+                decoration: const InputDecoration(labelText: 'ความชื้นในดิน (%)'),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value!.isEmpty) {
@@ -124,9 +204,9 @@ class _EditNotePageState extends State<EditNotePage> {
                   return null;
                 },
               ),
-              SizedBox(height: 16.0),
+              const SizedBox(height: 16.0),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     // อัปเดตข้อมูลบันทึกเมื่อผู้ใช้กด "บันทึก"
                     final updatedData = {
@@ -148,10 +228,15 @@ class _EditNotePageState extends State<EditNotePage> {
                         .then((_) {
                       // แสดงแจ้งเตือนว่าข้อมูลถูกอัปเดต
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
+                        const SnackBar(
                           content: Text('บันทึกถูกอัปเดตแล้ว'),
                         ),
                       );
+
+                      // ตรวจสอบว่ามีรูปภาพถูกเลือกหรือไม่ก่อนอัปโหลด
+                      if (_pickedImage != null) {
+                        _uploadAndReplaceImage(_pickedImage!);
+                      }
 
                       // ย้อนกลับไปยังหน้าแสดงบันทึกหลัก (ViewNotesPage)
                       Navigator.pop(context);
@@ -159,14 +244,83 @@ class _EditNotePageState extends State<EditNotePage> {
                       // กรณีเกิดข้อผิดพลาดในการอัปเดตข้อมูล
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('เกิดข้อผิดพลาดในการอัปเดตข้อมูล'),
+                          content: Text('เกิดข้อผิดพลาดในการอัปเดตข้อมูล: $error'),
                         ),
                       );
                     });
                   }
                 },
-                child: Text('บันทึก'),
+                child: const Text('บันทึก'),
               ),
+              const SizedBox(height: 16.0),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final picker = ImagePicker();
+                  final action = await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('เลือกแหล่งที่มาของรูปภาพ'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.photo),
+                              title: const Text('แก้ไขรูปภาพจากอัลบั้ม'),
+                              onTap: () {
+                                Navigator.pop(context, 'Gallery');
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.camera),
+                              title: const Text('ถ่ายรูปภาพ'),
+                              onTap: () {
+                                Navigator.pop(context, 'Camera');
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+
+                  if (action == 'Gallery') {
+                    final pickedFile =
+                        await picker.pickImage(source: ImageSource.gallery);
+                    // เพิ่มโค้ดเพื่อใช้รูปภาพที่ถูกเลือก
+                    if (pickedFile != null) {
+                      setState(() {
+                        _pickedImage = pickedFile;
+                      });
+                    }
+                  } else if (action == 'Camera') {
+                    final pickedFile =
+                        await picker.pickImage(source: ImageSource.camera);
+                    // เพิ่มโค้ดเพื่อใช้รูปภาพที่ถ่าย
+                    if (pickedFile != null) {
+                      setState(() {
+                        _pickedImage = pickedFile;
+                      });
+                    }
+                  }
+                },
+                icon: const Icon(
+                  Icons.photo_camera,
+                  size: 24.0,
+                ),
+                label: const Text('แก้ไขหรือถ่ายรูปภาพ'),
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  shadowColor: Colors.grey.withOpacity(0.5),
+                  elevation: 5,
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              if (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
+                Image.network(_currentImageUrl!),
             ],
           ),
         ),

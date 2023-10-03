@@ -11,16 +11,16 @@ class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> userProfile;
   final User? user;
 
-  EditProfilePage({required this.userProfile, required this.user});
+  const EditProfilePage({super.key, required this.userProfile, required this.user});
 
   @override
   _EditProfilePageState createState() => _EditProfilePageState();
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  TextEditingController _fullNameController = TextEditingController();
-  TextEditingController _phoneNumberController = TextEditingController();
-  TextEditingController _emailController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _phoneNumberController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   String? imgURL; // เพิ่มตัวแปรเก็บ URL ของรูปภาพ
   File? pickedImage; // เพิ่มตัวแปรเก็บรูปภาพที่ถูกเลือก
 
