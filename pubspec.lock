@@ -613,6 +613,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "23.1.38"
+  syncfusion_flutter_sliders:
+    dependency: "direct main"
+    description:
+      name: syncfusion_flutter_sliders
+      sha256: "4c055cdb4eb67c14d7bcf400f114055616ed5e5c21f6bd42ef98b59af04ffdb5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "23.1.38"
   synchronized:
     dependency: transitive
     description:

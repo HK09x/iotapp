@@ -25,6 +25,7 @@ dependencies:
   audioplayers: ^5.1.0
   flutter_dropdown: ^1.0.1+hotfix.1
   syncfusion_flutter_charts: ^23.1.38
+  syncfusion_flutter_sliders: ^23.1.38
 
 dev_dependencies:
   flutter_test:

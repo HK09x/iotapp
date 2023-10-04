@@ -125,6 +125,8 @@ class _ViewNotesPageState extends State<ViewNotesPage> {
               final temperature = note['temperature'];
               final humidity = note['humidity'];
               final soilMoisture = note['soil_moisture'];
+              final goodVegetable = note['goodVegetable'];
+              final badVegetable = note['badVegetable'];
 
               final formattedDate = (day as Timestamp).toDate();
               final formattedDateString =
@@ -163,6 +165,8 @@ class _ViewNotesPageState extends State<ViewNotesPage> {
                               Text('อุณหภูมิ : $temperature (°C)'),
                               Text('ความชื้น : $humidity (%)'),
                               Text('ความชื้นในดิน : $soilMoisture (%)'),
+                              Text('ผักที่ดี : $goodVegetable (ต้น)'),
+                              Text('ผักที่เสีย : $badVegetable (ต้น)'),
                             ],
                           ),
                         ),

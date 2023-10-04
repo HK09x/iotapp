@@ -23,6 +23,8 @@ class _EditNotePageState extends State<EditNotePage> {
   final TextEditingController _temperatureController = TextEditingController();
   final TextEditingController _humidityController = TextEditingController();
   final TextEditingController _soilMoistureController = TextEditingController();
+   final TextEditingController _goodVegetableController = TextEditingController(); 
+  final TextEditingController _badVegetableController = TextEditingController(); 
   XFile? _pickedImage; // เปลี่ยนจาก File เป็น XFile สำหรับ ImagePicker
   String? _currentImageUrl; // เก็บ URL รูปภาพปัจจุบัน
 
@@ -48,6 +50,8 @@ class _EditNotePageState extends State<EditNotePage> {
         _temperatureController.text = data['temperature'].toString();
         _humidityController.text = data['humidity'].toString();
         _soilMoistureController.text = data['soil_moisture'].toString();
+        _goodVegetableController.text = data['goodVegetable'].toString();
+        _badVegetableController.text = data['badVegetable'].toString();
 
         // กำหนดค่า _currentImageUrl ให้มีค่าเท่ากับ URL ปัจจุบัน
         _currentImageUrl = data['img'];
@@ -73,7 +77,9 @@ class _EditNotePageState extends State<EditNotePage> {
   }
 
   // ฟังก์ชันอัปโหลดและอัปเดตรูปภาพ
-  Future<void> _uploadAndReplaceImage(XFile imageFile) async {
+Future<void> _uploadAndReplaceImage(XFile imageFile) async {
+  // ตรวจสอบว่า State ยังคงอยู่หรือไม่
+  if (mounted) {
     // ตรวจสอบว่ามีรูปภาพที่ถูกเลือกหรือไม่
     if (imageFile != null) {
       // อัปโหลดรูปภาพที่ถูกเลือกไปยัง Firebase Storage
@@ -86,45 +92,56 @@ class _EditNotePageState extends State<EditNotePage> {
           .collection('notes')
           .doc(widget.noteId)
           .update({'img': imageUrl}).then((_) {
-        // แสดงแจ้งเตือนหรือทำอย่างอื่นตามที่คุณต้องการ
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('รูปภาพถูกบันทึกแล้ว'),
-          ),
-        );
+        if (mounted) {
+          // แสดงแจ้งเตือนหรือทำอื่น ๆ ตามที่คุณต้องการ
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('รูปภาพถูกบันทึกแล้ว'),
+            ),
+          );
+        }
       }).catchError((error) {
-        // กรณีเกิดข้อผิดพลาดในการอัปเดตข้อมูล
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('เกิดข้อผิดพลาดในการอัปเดตข้อมูล: $error'),
-          ),
-        );
+        if (mounted) {
+          // กรณีเกิดข้อผิดพลาดในการอัปเดตข้อมูล
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('เกิดข้อผิดพลาดในการอัปเดตข้อมูล: $error'),
+            ),
+          );
+        }
       });
     }
   }
+}
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+Future<void> _pickImage() async {
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
+  // ตรวจสอบว่า State ยังคงอยู่หรือไม่
+  if (mounted) {
     if (pickedFile != null) {
       setState(() {
         _pickedImage = pickedFile;
       });
     }
   }
+}
 
-  Future<void> _takePicture() async {
-    final picker = ImagePicker();
-    final pickedFile =
-        await picker.pickImage(source: ImageSource.camera); // ถ่ายรูป
+Future<void> _takePicture() async {
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(source: ImageSource.camera);
 
+  // ตรวจสอบว่า State ยังคงอยู่หรือไม่
+  if (mounted) {
     if (pickedFile != null) {
       setState(() {
         _pickedImage = pickedFile;
       });
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +221,30 @@ class _EditNotePageState extends State<EditNotePage> {
                   return null;
                 },
               ),
+              TextFormField(
+                controller: _goodVegetableController,
+                decoration: const InputDecoration(labelText: 'ผักที่ดี'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'กรุณาใส่จำนวนผักที่ดี';
+                  }
+                  // เพิ่มเงื่อนไขตรวจสอบความชื้นในดินตามความเหมาะสม
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _badVegetableController,
+                decoration: const InputDecoration(labelText: 'ผักที่เสีย'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'กรุณาใส่จำนวนผักที่เสีย';
+                  }
+                  // เพิ่มเงื่อนไขตรวจสอบความชื้นในดินตามความเหมาะสม
+                  return null;
+                },
+              ),
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () async {
@@ -216,6 +257,8 @@ class _EditNotePageState extends State<EditNotePage> {
                       'temperature': double.parse(_temperatureController.text),
                       'humidity': double.parse(_humidityController.text),
                       'soil_moisture': double.parse(_soilMoistureController.text),
+                      'goodVegetable': _goodVegetableController.text,
+                      'badVegetable': _badVegetableController.text,
                     };
 
                     // บันทึกข้อมูลอัปเดตลงใน Firestore

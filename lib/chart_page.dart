@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 class ChartPage extends StatelessWidget {
@@ -20,6 +21,7 @@ class ChartPage extends StatelessWidget {
             .collection('users')
             .doc(user?.uid)
             .collection(houseName)
+            .orderBy(FieldPath.documentId) // เรียงลำดับตาม Document ID
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -40,10 +42,15 @@ class ChartPage extends StatelessWidget {
             final humidity = (data['humidity'] as num).toDouble();
             final temperature = (data['temperature'] as num).toDouble();
             final soilMoisture = (data['soilMoisture'] as num).toDouble();
-            final timestamp = data.id;
+            final timestamp =
+                DateTime.parse(data.id); // แปลง Document ID เป็น DateTime
+
+            // แปลง timestamp เป็นวันที่และเวลา
+            final formattedTimestamp =
+                DateFormat('dd/MM/yyyy HH:mm').format(timestamp);
 
             return ChartData(
-              timestamp: timestamp,
+              timestamp: formattedTimestamp,
               humidity: humidity,
               temperature: temperature,
               soilMoisture: soilMoisture,
@@ -58,7 +65,8 @@ class ChartPage extends StatelessWidget {
               primaryXAxis: CategoryAxis(),
               primaryYAxis: NumericAxis(),
               tooltipBehavior: TooltipBehavior(
-                enable: true, // เปิดใช้งาน Tooltip
+                enable: true,
+                format: 'point.x : point.y%', // รูปแบบสำหรับ Tooltip
               ),
               series: <ChartSeries>[
                 LineSeries<ChartData, String>(

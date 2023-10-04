@@ -44,40 +44,42 @@ class HousePage extends StatelessWidget {
               );
             },
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final snapshot = await FirebaseFirestore.instance
-                  .collection('sensor_data')
-                  .doc(user?.uid)
-                  .collection(houseName)
-                  .doc('plot')
-                  .get();
+         ElevatedButton(
+  onPressed: () async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('sensor_data')
+        .doc(user?.uid)
+        .collection(houseName)
+        .doc('plot')
+        .get();
 
-              if (snapshot.exists) {
-                final data = snapshot.data() as Map<String, dynamic>;
-                ip = data['ip'] ?? "";
+    if (snapshot.exists) {
+      final data = snapshot.data() as Map<String, dynamic>;
+      String ip = data['ip'] ?? "";
 
-                bool isHttps = ip.toLowerCase().startsWith("http://");
-                if (!isHttps) {
-                  ip = "http://$ip";
-                }
+      bool isHttps = ip.toLowerCase().startsWith("http://");
+      if (!isHttps) {
+        ip = "http://$ip";
+      }
 
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VideoPlayerScreen(videoUrl: ip),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('ไม่พบข้อมูล URL ใน Cloud Firestore'),
-                  ),
-                );
-              }
-            },
-            child: const Text('วิดีโอ'),
-          ),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoPlayerScreen(videoUrl: ip),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ไม่พบข้อมูล URL ใน Cloud Firestore'),
+        ),
+      );
+    }
+  },
+  child: const Text('วิดีโอ'),
+),
+
+
           ElevatedButton(
             onPressed: () {
               Navigator.push(

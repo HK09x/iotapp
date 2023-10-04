@@ -20,6 +20,8 @@ class _AddNotePageState extends State<AddNotePage> {
   final TextEditingController _temperatureController = TextEditingController();
   final TextEditingController _humidityController = TextEditingController();
   final TextEditingController _soilMoistureController = TextEditingController();
+  final TextEditingController _goodVegetableController = TextEditingController(); // ช่องใส่จำนวนผักที่ดี
+  final TextEditingController _badVegetableController = TextEditingController(); // ช่องใส่จำนวนผักที่เสีย
   File? pickedImage;
   DateTime? selectedDate;
 
@@ -33,6 +35,8 @@ class _AddNotePageState extends State<AddNotePage> {
     final String temperature = _temperatureController.text.trim();
     final String humidity = _humidityController.text.trim();
     final String soilMoisture = _soilMoistureController.text.trim();
+    final String goodVegetable = _goodVegetableController.text.trim(); // จำนวนผักที่ดี
+    final String badVegetable = _badVegetableController.text.trim(); // จำนวนผักที่เสีย
 
     if (disease.isNotEmpty &&
         house.isNotEmpty &&
@@ -60,6 +64,8 @@ class _AddNotePageState extends State<AddNotePage> {
         'temperature': temperature,
         'humidity': humidity,
         'soil_moisture': soilMoisture,
+        'goodVegetable': goodVegetable, // จำนวนผักที่ดี
+        'badVegetable': badVegetable, // จำนวนผักที่เสีย
       }).then((_) {
         Navigator.pop(context);
       }).catchError((error) {
@@ -188,6 +194,14 @@ class _AddNotePageState extends State<AddNotePage> {
               TextField(
                 controller: _soilMoistureController,
                 decoration: const InputDecoration(labelText: 'ความชื้นในดิน (%)'),
+              ),
+              TextField(
+                controller: _goodVegetableController, // จำนวนผักที่ดี
+                decoration: const InputDecoration(labelText: 'ผักที่ดี (จำนวนต้น)'),
+              ),
+              TextField(
+                controller: _badVegetableController, // จำนวนผักที่เสีย
+                decoration: const InputDecoration(labelText: 'ผักที่เสีย (จำนวนต้น)'),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
